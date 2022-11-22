@@ -77,6 +77,11 @@ def get_user(username):
 def update_user(username):
     db = get_db()
 
+    username_r = db.query(User).filter(User.username == username).first()
+
+    if username_r is None:
+        return StatusResponse(code=404,response="No user with such username!")
+        
     try:
         user = UserCreatingSchema().load(request.get_json())
     except ValidationError as err:
@@ -84,7 +89,8 @@ def update_user(username):
 
     username_r = db.query(User).filter(User.username == user['username']).first()
 
-    if username_r is not None and username_r.username != username:
+    
+    if  username_r is not None and username_r.username != username:
         return StatusResponse(code=400, response='The username is used by other user')
 
     email_r = db.query(User).filter(User.email==user['email']).first()
@@ -94,6 +100,8 @@ def update_user(username):
 
     hashed_password = bcrypt.hashpw(user['password'].encode('utf-8'),salt = bcrypt.gensalt()).decode('utf-8')
 
+
+    username_r = db.query(User).filter(User.username == username).first()
     username_r.firstName=user['firstName']
     username_r.lastName=user['lastName']
     username_r.username=user['username']
