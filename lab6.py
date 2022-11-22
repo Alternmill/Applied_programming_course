@@ -1,71 +1,18 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
-from sqlalchemy import Column, Integer, ForeignKey, VARCHAR, DateTime, Table
+from flask import Flask
 
-engine = create_engine('mysql+pymysql://root:2706@localhost:3306/notes')
-engine.connect()
+def create_app(test_config=None):
+    # create and configure the app
+    app = Flask(__name__, instance_relative_config=True)
 
-SessionFactory = sessionmaker(bind=engine)
+    from db import db_init
+    db_init()
 
-Session = scoped_session(SessionFactory)
+    from api import tag,note,user
+    app.register_blueprint(tag.tag)
+    app.register_blueprint(note.note)
+    app.register_blueprint(user.user)
+    return app
 
-BaseModel = declarative_base()
-
-
-class User(BaseModel):
-    __tablename__ = "User"
-
-    idUser = Column(Integer, primary_key=True)
-    username = Column(VARCHAR(25), nullable=False)
-    password = Column(VARCHAR(45), nullable=False)
-    email = Column(VARCHAR(35), nullable=False)
-    firstName = Column(VARCHAR(25), nullable=False)
-    lastName = Column(VARCHAR(25), nullable=False)
-    userStatus = Column(Integer(), nullable=False)
-
-    notes = relationship("Note")
-
-
-class Tag(BaseModel):
-    __tablename__ = "Tag"
-
-    idTag = Column(Integer, primary_key=True)
-    text = Column(VARCHAR(45), nullable=False)
-
-
-class Note(BaseModel):
-    __tablename__ = "Note"
-
-    idNote = Column(Integer, primary_key=True)
-    ownerId = Column(Integer, ForeignKey(User.idUser))
-    title = Column(VARCHAR(45), nullable=False)
-    isPublic = Column(VARCHAR(5), nullable=False)
-    text = Column(VARCHAR(404), nullable=False)
-    dateOfEditing = Column(DateTime, nullable=False)
-
-
-class Tags(BaseModel):
-    __tablename__ = "Tags"
-
-    idNote = Column(Integer, ForeignKey(Note.idNote), primary_key=True)
-    idTag = Column(Integer, ForeignKey(Tag.idTag), primary_key=True)
-
-
-class EditNote(BaseModel):
-    __tablename__ = "EditNote"
-
-    idUser = Column(Integer, ForeignKey(User.idUser), primary_key=True)
-    idNote = Column(Integer, ForeignKey(Note.idNote), primary_key=True)
-
-
-class Stats(BaseModel):
-    __tablename__ = "Stats"
-
-    idStats = Column(Integer, primary_key=True)
-    userId = Column(Integer, ForeignKey(User.idUser))
-    numOfNotes = Column(Integer, nullable=False)
-    numOfEditingNotes = Column(Integer, nullable=False)
-    dateOfCreating = Column(DateTime, nullable=False)
-
-
+if __name__ == '__main__':
+    app = create_app()
+    app.run(debug=True)

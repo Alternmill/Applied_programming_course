@@ -188,7 +188,7 @@ paths:
         - note_auth:
           - admin
           - user
-  /user/stat/{userId}:
+  /user/stat/{username}:
     get:
       tags:
         - user
@@ -196,7 +196,7 @@ paths:
       description: ''
       operationId: getStatsById
       parameters:
-        - name: userId
+        - name: username
           in: path
           description: 'The name that needs to be fetched. Use 10 for testing. '
           required: true
@@ -694,9 +694,6 @@ components:
         text:
           type: string
           example: '#lviv'
-        presence:
-          type: boolean
-          example: true
       xml:
         name: tag
     TagUpdate:
@@ -707,9 +704,6 @@ components:
         text:
           type: string
           example: '#lviv'
-        presence:
-          type: boolean
-          example: true
       xml:
         name: tagUpdate
     Stats:
