@@ -4,12 +4,32 @@ from sqlalchemy import desc
 from sqlalchemy.sql import func
 from db import *
 from schemas import *
+import bcrypt
 from models import *
 from api.errors import StatusResponse
+from flask_httpauth import HTTPBasicAuth
 
 note = Blueprint('note', __name__, url_prefix='/note')
 
+auth = HTTPBasicAuth()
+
+@auth.verify_password
+def verify_password(username, password):
+    db = get_db()
+    user_r = db.query(User).filter(User.username == username).first()
+    if user_r is None:
+        return False
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'),salt = bcrypt.gensalt())
+    print(username)
+    print(user_r.password)
+    print(hashed_password)
+    if (user_r is None) or (bcrypt.checkpw(user_r.password.encode('utf-8') , hashed_password)):
+        return False 
+    return username
+
+
 @note.route('/', methods=['POST'])
+@auth.login_required
 def note_create():
     db = get_db()
 
@@ -53,6 +73,7 @@ def note_create():
     return StatusResponse(response= 'Successful creation of a note', code = 200) 
 
 @note.route('/<int:id>', methods=['GET'])
+@auth.login_required
 def note_get(id):
     db = get_db()
     
@@ -83,6 +104,7 @@ def note_get(id):
 
 
 @note.route('/<int:id>', methods=['PUT'])
+@auth.login_required
 def note_update(id):
     db = get_db()
     
@@ -123,6 +145,7 @@ def note_update(id):
 
 
 @note.route('/<int:id>', methods=['DELETE'])
+@auth.login_required
 def note_delete(id):
     db = get_db()
     
@@ -144,6 +167,7 @@ def note_delete(id):
 
 
 @note.route('/allowed', methods=['POST'])
+@auth.login_required
 def note_allow_change():
     db = get_db()
     
@@ -165,6 +189,7 @@ def note_allow_change():
     return StatusResponse("User now has access to modify",200)
 
 @note.route('/allowed', methods=['DELETE'])
+@auth.login_required
 def note_disallow_change():
     db = get_db()
     

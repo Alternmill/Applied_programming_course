@@ -1,15 +1,33 @@
 from flask import Blueprint, request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import desc
-
+import bcrypt
 from db import *
 from schemas import *
 from models import *
 from api.errors import StatusResponse
-
+from flask_httpauth import HTTPBasicAuth
 tag = Blueprint('tag', __name__, url_prefix='/tag')
 
+auth = HTTPBasicAuth()
+
+@auth.verify_password
+def verify_password(username, password):
+    db = get_db()
+    user_r = db.query(User).filter(User.username == username).first()
+    if user_r is None:
+        return False
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'),salt = bcrypt.gensalt())
+    print(username)
+    print(user_r.password)
+    print(hashed_password)
+    if (user_r is None) or (bcrypt.checkpw(user_r.password.encode('utf-8') , hashed_password)):
+        return False 
+    return username
+
+
 @tag.route('/', methods=['POST'])
+@auth.login_required
 def tag_create():
     db = get_db()
 
@@ -17,6 +35,8 @@ def tag_create():
         new_tag = TagSchema().load(request.json)
     except ValidationError:
         return StatusResponse(response= 'Error : Invalid input for TagCreate', code = 400) 
+
+    
 
     check = db.query(Tag).filter(Tag.idTag == new_tag['idTag']).all()
 
@@ -47,6 +67,7 @@ def tag_get(id):
    
 
 @tag.route('/<int:id>', methods=['PUT'])
+@auth.login_required
 def tag_update(id):
     db = get_db()
 
@@ -54,7 +75,9 @@ def tag_update(id):
 
     if tag is None:
         return StatusResponse('Error, no such tag', code = 404) 
-
+    check_admin = db.query(Admin).filter(Admin.username == auth.username()).first()
+    if check_admin is None:
+        return StatusResponse(response= 'Must be an admin', code = 401) 
     try:
         new_tag = TagUpdateSchema().load(request.json)
     except ValidationError:
@@ -68,11 +91,14 @@ def tag_update(id):
 
 
 @tag.route('/<int:id>', methods=['DELETE'])
+@auth.login_required
 def tag_delete(id):
     db = get_db()
 
     tag = db.query(Tag).filter(Tag.idTag == id).first()
-
+    check_admin = db.query(Admin).filter(Admin.username == auth.username()).first()
+    if check_admin is None:
+        return StatusResponse(response= 'Must be an admin', code = 401) 
     if tag is None:
         return StatusResponse('Error, no such tag', code = 404)
     ctags = db.query(Tags).filter(Tags.idTag == id).all()

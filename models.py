@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
-from sqlalchemy import Column, Integer, ForeignKey, VARCHAR, DateTime, Table
+from sqlalchemy import Column, Integer, ForeignKey, VARCHAR, DateTime, Table,String
 
 engine = create_engine('mysql+pymysql://root:1111@localhost:3306/notes')
 engine.connect()
@@ -71,3 +71,7 @@ class Stats(BaseModel):
     dateOfCreating = Column(DateTime, nullable=False)
 
 
+class Admin(BaseModel):
+    __tablename__ = "admins"
+    
+    username = Column(String(30), nullable=False,primary_key = True)

@@ -7,7 +7,25 @@ from schemas import *
 from models import *
 from api.errors import StatusResponse
 from api.note import note_delete
+from flask_httpauth import HTTPBasicAuth
+
 user = Blueprint('user', __name__, url_prefix='/user')
+auth = HTTPBasicAuth()
+
+@auth.verify_password
+def verify_password(username, password):
+    db = get_db()
+    user_r = db.query(User).filter(User.username == username).first()
+    if user_r is None:
+        return False
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'),salt = bcrypt.gensalt())
+    print(username)
+    print(user_r.password)
+    print(hashed_password)
+    if (user_r is None) or (bcrypt.checkpw(user_r.password.encode('utf-8') , hashed_password)):
+        return False 
+    return username
+
 
 @user.route('/', methods=['POST'])
 def add_user():
@@ -74,6 +92,7 @@ def get_user(username):
     return jsonify(user)
 
 @user.route('/<username>', methods=['PUT'])
+@auth.login_required
 def update_user(username):
     db = get_db()
 
@@ -114,6 +133,7 @@ def update_user(username):
     return StatusResponse(code=200, response='User succesfully updated')
 
 @user.route('/<username>', methods=['DELETE'])
+@auth.login_required
 def delete_user(username):
     db = get_db()
 
@@ -132,6 +152,7 @@ def delete_user(username):
     return StatusResponse(code=200, response='User succesfully deleted')
 
 @user.route('/stat/<username>', methods=['GET'])
+@auth.login_required
 def get_user_stat(username):
     db = get_db()
 
