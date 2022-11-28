@@ -7,9 +7,6 @@ auth = HTTPBasicAuth()
 # create and configure the app
 app = Flask(__name__, instance_relative_config=True)
 
-from db import db_init,get_db
-db_init()
-
 from api import tag,note,user
 app.register_blueprint(tag.tag)
 app.register_blueprint(note.note)

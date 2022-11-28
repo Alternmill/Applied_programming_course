@@ -19,9 +19,6 @@ def verify_password(username, password):
     if user_r is None:
         return False
     hashed_password = bcrypt.hashpw(password.encode('utf-8'),salt = bcrypt.gensalt())
-    print(username)
-    print(user_r.password)
-    print(hashed_password)
     if (user_r is None) or (bcrypt.checkpw(user_r.password.encode('utf-8') , hashed_password)):
         return False 
     return username
@@ -47,8 +44,6 @@ def add_user():
         return StatusResponse(code=400, response='The email is used by other user')
 
     hashed_password = bcrypt.hashpw(user['password'].encode('utf-8'),salt = bcrypt.gensalt()).decode('utf-8')
-
-    print(hashed_password)
 
     new_user = User(firstName=user['firstName'], lastName=user['lastName'], username=user['username'],
                      email=user['email'], password=hashed_password,userStatus = 1)

@@ -18,9 +18,6 @@ def verify_password(username, password):
     if user_r is None:
         return False
     hashed_password = bcrypt.hashpw(password.encode('utf-8'),salt = bcrypt.gensalt())
-    print(username)
-    print(user_r.password)
-    print(hashed_password)
     if (user_r is None) or (bcrypt.checkpw(user_r.password.encode('utf-8') , hashed_password)):
         return False 
     return username
@@ -36,9 +33,7 @@ def tag_create():
     except ValidationError:
         return StatusResponse(response= 'Error : Invalid input for TagCreate', code = 400) 
 
-    
-
-    check = db.query(Tag).filter(Tag.idTag == new_tag['idTag']).all()
+    check = db.query(Tag).filter(Tag.idTag == new_tag['idTag']).first()
 
     if check is not None:
         return StatusResponse(response= 'Error : tag with this id already exists', code = 400) 
@@ -54,8 +49,6 @@ def tag_create():
 
 @tag.route('/<int:id>', methods=['GET'])
 def tag_get(id):
-    db = get_db()
-    
     tag = db.query(Tag).filter(Tag.idTag == id).first()
 
     if tag is None:

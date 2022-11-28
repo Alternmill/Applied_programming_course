@@ -11,7 +11,7 @@ list_of_tags = Tags(idNote=1, idTag=1)
 note1 = Note(ownerId=1, title='My perfect life', isPublic='true', text='Hello!It`s me and my perfect life', dateOfEditing=datetime.now())
 stats1 = Stats(userId=1, numOfNotes=1, numOfEditingNotes=0, dateOfCreating=datetime.now())
 editnote1 = EditNote(idUser=2, idNote=1)
-db_init()
+
 session = get_db()
 
 session.add(user1)

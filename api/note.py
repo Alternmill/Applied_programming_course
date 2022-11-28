@@ -20,9 +20,6 @@ def verify_password(username, password):
     if user_r is None:
         return False
     hashed_password = bcrypt.hashpw(password.encode('utf-8'),salt = bcrypt.gensalt())
-    print(username)
-    print(user_r.password)
-    print(hashed_password)
     if (user_r is None) or (bcrypt.checkpw(user_r.password.encode('utf-8') , hashed_password)):
         return False 
     return username
@@ -80,7 +77,7 @@ def note_get(id):
     note = db.query(Note).filter(Note.idNote == id).first()
 
     if note is None:
-        return StatusResponse(response= 'Error, no such note id', code = 404) 
+        return StatusResponse(response= 'Error, no such note id', code = 200) 
     
     note_info = NoteGetSchemaWithAuthors().dump(note)
 
@@ -111,7 +108,7 @@ def note_update(id):
     note = db.query(Note).filter(Note.idNote == id).first()
 
     if note is None:
-        return StatusResponse(response= 'Error, no such note id', code = 404) 
+        return StatusResponse(response= 'Error, no such note id', code = 200) 
     try:
         new_note = NoteCreatingSchema().load(request.json)
     except ValidationError:
@@ -152,7 +149,7 @@ def note_delete(id):
     note = db.query(Note).filter(Note.idNote == id).first()
 
     if note is None:
-        return StatusResponse(response= 'Error, no such note id', code = 404) 
+        return StatusResponse(response= 'Error, no such note id', code = 200) 
 
     
     db.query(Tags).filter(Tags.idNote == id).delete()
