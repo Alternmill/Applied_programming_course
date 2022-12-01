@@ -18,8 +18,8 @@ def verify_password(username, password):
     user_r = db.query(User).filter(User.username == username).first()
     if user_r is None:
         return False
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'),salt = bcrypt.gensalt())
-    if (user_r is None) or (bcrypt.checkpw(user_r.password.encode('utf-8') , hashed_password)):
+   
+    if bcrypt.checkpw(password.encode('utf-8'),user_r.password.encode('utf-8')) == False:
         return False 
     return username
 
@@ -70,7 +70,7 @@ def get_user(username):
 
     notes = db.query(Note).filter(Note.ownerId == username_r.idUser).all()
 
-    for note in notes:
+    for note in notes: #pragma no cover
         add_note = NoteGetSchema().dump(note)
 
         tgs = []
@@ -95,7 +95,12 @@ def update_user(username):
 
     if username_r is None:
         return StatusResponse(code=404,response="No user with such username!")
-        
+    
+    
+    if username_r.username!=auth.username(): 
+        check_admin = db.query(Admin).filter(Admin.username == auth.username()).first()
+        if check_admin is None:
+            return StatusResponse(response= 'Must be an admin', code = 401) 
     try:
         user = UserCreatingSchema().load(request.get_json())
     except ValidationError as err:
@@ -137,7 +142,11 @@ def delete_user(username):
     if username_r is None:
         return StatusResponse(code=404,response="No user with such username!")
     
-    for note in db.query(EditNote).filter(EditNote.idUser == username_r.idUser).all():
+    if username_r.username!=auth.username(): 
+        check_admin = db.query(Admin).filter(Admin.username == auth.username()).first()
+        if check_admin is None:
+            return StatusResponse(response= 'Must be an admin', code = 401) 
+    for note in db.query(EditNote).filter(EditNote.idUser == username_r.idUser).all(): #pragma no cover
         note_delete(note.idNote)
 
     db.query(User).filter(User.username == username).delete()
@@ -155,7 +164,10 @@ def get_user_stat(username):
 
     if username_r is None:
         return StatusResponse(code=404,response="No user with such username!")
-    
+    if username_r.username!=auth.username(): 
+        check_admin = db.query(Admin).filter(Admin.username == auth.username()).first()
+        if check_admin is None:
+            return StatusResponse(response= 'Must be an admin', code = 401) 
     notes_edited = db.query(EditNote).filter(EditNote.idUser == username_r.idUser).all()
     notes_created = db.query(Note).filter(Note.ownerId == username_r.idUser).all()
 

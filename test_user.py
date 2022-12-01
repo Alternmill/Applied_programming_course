@@ -1,215 +1,316 @@
-import unittest
-from unittest import TestCase
-
-from api.errors import *
+from flask_testing import TestCase
+from flask import Flask
+from db import get_db_test
+from api.user import verify_password
 from models import User
-from db import get_db
-from api.user import verify_password,get_user
-from lab6 import app
-import requests
-from flask_httpauth import HTTPBasicAuth
 
 def delete_user_if_present(id):
-    db = get_db()
+    db = get_db_test()
     if db.query(User).filter(User.username == id).first() is not None:
         db.query(User).filter(User.username == id).delete()
         db.commit()
 
-class TestUser(TestCase):
 
-    def setUp(self) -> None:
-        self.user = User(
-            username='username',
-            firstName='first_name',
-            lastName='last_name',
-            email='email',
-            password='password'
-        )
+class MyTest(TestCase):
 
-    def test_login(self):
-        with app.app_context():
-            a = verify_password('user5','qwerty')
-            self.assertEqual(a,'user5')
+    TESTING = True
 
-    def test_login_bad(self):
-        with app.app_context():
-            a = verify_password('user6','notqwerty')
-            self.assertNotEqual(a,'user5')
-    def test_add_user(self):
-        user = self.user
-    def test_get_user(self):
-        with app.app_context():
-            db = get_db()
-            a = get_user('user5')
-            #print(a)
-            self.assertEqual(a.status_code,200)
-    def test_get_user_bad_id(self):
-        with app.app_context():
-            db = get_db()
-            a = get_user('5')
-            #print(a)
-            self.assertEqual(a.status_code,404)
-    def test_create(self):
-        with app.app_context():
-            db = get_db()
-            delete_user_if_present("user777")
-            url = "http://127.0.0.1:5000/user"
-            tag_obj = {
-                "username": "user777",
-                "email": "ailuweq@gmail.com",
-                "password": "qwerty",
-                "firstName": "Carl",
-                "lastName": "Jackson"
-                }
+    def create_app(self):
+        from api import tag,note,user
 
-            x = requests.post(url=url,json=tag_obj)
-            #print('----\n',x.text,'\n----\n')
-            db.query(User).filter(User.username=='user777').delete()
-            db.commit()
-            self.assertEqual(x.status_code,200)
-
-    def test_create_used_email(self):
-        with app.app_context():
-            db = get_db()
-            delete_user_if_present("user777")
-            url = "http://127.0.0.1:5000/user"
-            tag_obj = {
-                "username": "user777",
-                "email": "ailu@gmail.com",
-                "password": "qwerty",
-                "firstName": "Carl",
-                "lastName": "Jackson"
-                }
-
-            x = requests.post(url=url,json=tag_obj)
-            #print('----\n',x.text,'\n----\n')
-            db.query(User).filter(User.username=='user777').delete()
-            db.commit()
-            self.assertEqual(x.status_code,400)
-    def test_create_used_email(self):
-        with app.app_context():
-            db = get_db()
-            delete_user_if_present("user777")
-            url = "http://127.0.0.1:5000/user"
-            tag_obj = {
-                "username": "user6",
-                "email": "ailuqwewq@gmail.com",
-                "password": "qwerty",
-                "firstName": "Carl",
-                "lastName": "Jackson"
-                }
-
-            x = requests.post(url=url,json=tag_obj)
-            #print('----\n',x.text,'\n----\n')
-            db.query(User).filter(User.username=='user777').delete()
-            db.commit()
-            self.assertEqual(x.status_code,400)
+        app = Flask(__name__)
+        app.register_blueprint(tag.tag)
+        app.register_blueprint(note.note)
+        app.register_blueprint(user.user)
+        app.config['TESTING'] = True
+        return app
     
+    def test_login(self):
+        a = verify_password('user1','qwerty')
+        self.assertEqual(a,'user1')
+
+    def test_login_bad_password(self):
+        a = verify_password('user1','notqwerty')
+        self.assertNotEqual(a,'user1')
+    
+    def test_login_bad_username(self):
+        a = verify_password('user4','qwerty')
+        self.assertNotEqual(a,'user4')
+
+    def test_create_user(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "test@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,200)
+
+    def test_create_user_bad_body(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": 1,
+        "email": "test@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,400)
+
+    def test_create_user_user_exists(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user1",
+        "email": "test@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,400)
+
+    def test_create_user_email_exists(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "admin@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,400)
+
+    def test_get_user(self):
+        response = self.client.get('user/user3')
+        self.assertEqual(response.status_code,404)
+
     def test_update_user(self):
-        with app.app_context():
-            db = get_db()
-            delete_user_if_present("user778")
-            url = "http://127.0.0.1:5000/user"
-            tag_obj = {
-                "username": "user778",
-                "email": "ailuqwewq@gmail.com",
-                "password": "qwerty",
-                "firstName": "Carl",
-                "lastName": "Jackson"
-                }
-
-            x = requests.post(url=url,json=tag_obj)
-            url = "http://127.0.0.1:5000/user/user778"
-            tag_obj = {
-                "username": "user778",
-                "email": "ailuqwewq@gmail.com",
-                "password": "qwerty",
-                "firstName": "Mike",
-                "lastName": "Jackson"
-                }
-            x = requests.put(url=url,json=tag_obj, auth =  ('user778', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            db.query(User).filter(User.username=='user778').delete()
-            db.commit()
-            self.assertEqual(x.status_code,200)
-
-    def test_update_user_bad_email(self):
-        with app.app_context():
-            db = get_db()
-            delete_user_if_present("user779")
-            url = "http://127.0.0.1:5000/user"
-            tag_obj = {
-                "username": "user779",
-                "email": "ailuqwewq@gmail.com",
-                "password": "qwerty",
-                "firstName": "Carl",
-                "lastName": "Jackson"
-                }
-
-            x = requests.post(url=url,json=tag_obj)
-            url = "http://127.0.0.1:5000/user/user779"
-            tag_obj = {
-                "username": "user779",
-                "email": "ailu@gmail.com",
-                "password": "qwerty",
-                "firstName": "Mike",
-                "lastName": "Jackson"
-                }
-            x = requests.put(url=url,json=tag_obj, auth =  ('user779', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            db.query(User).filter(User.username=='user779').delete()
-            db.commit()
-            self.assertEqual(x.status_code,400)
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        auth = ('user1', 'qwerty')
+        response = self.client.put('user/user3',json=tag_obj,auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,200)
 
     def test_update_user_bad_id(self):
-        with app.app_context():
-            db = get_db()
-            delete_user_if_present("user780")
-            url = "http://127.0.0.1:5000/user"
-            tag_obj = {
-                "username": "user780",
-                "email": "ailuqwewq@gmail.com",
-                "password": "qwerty",
-                "firstName": "Carl",
-                "lastName": "Jackson"
-                }
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        auth = ('user1', 'qwerty')
+        response = self.client.put('user/user4',json=tag_obj,auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,404)
+    
+    def test_update_user_bad_user(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        auth = ('user2', 'qwerty')
+        response = self.client.put('user/user3',json=tag_obj,auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,401)
 
-            x = requests.post(url=url,json=tag_obj)
-            url = "http://127.0.0.1:5000/user/user780"
-            tag_obj = {
-                "username": "user5",
-                "email": "ailu@gmail.com",
-                "password": "qwerty",
-                "firstName": "Mike",
-                "lastName": "Jackson"
-                }
-            x = requests.put(url=url,json=tag_obj, auth =  ('user780', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            db.query(User).filter(User.username=='user780').delete()
-            db.commit()
-            self.assertEqual(x.status_code,401)
+    def test_update_user_bad_body(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        tag_obj = {
+        "username": 1,
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        auth = ('user1', 'qwerty')
+        response = self.client.put('user/user3',json=tag_obj,auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,400)
 
-    def test_delete(self):
-        with app.app_context():
-            db = get_db()
-            delete_user_if_present("user781")
-            url = "http://127.0.0.1:5000/user"
-            tag_obj = {
-                "username": "user781",
-                "email": "ailuqqwewq@gmail.com",
-                "password": "qwerty",
-                "firstName": "Carl",
-                "lastName": "Jackson"
-                }
+    def test_update_user_username_exists(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        tag_obj = {
+        "username": "user2",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        auth = ('user1', 'qwerty')
+        response = self.client.put('user/user3',json=tag_obj,auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,400)
 
-            x = requests.post(url=url,json=tag_obj)
-            url = "http://127.0.0.1:5000/user/user781"
-            x = requests.delete(url=url, auth =  ('user781', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            db.query(User).filter(User.username=='user781').delete()
-            db.commit()
-            self.assertEqual(x.status_code,200)
+    def test_update_user_email_exists(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        tag_obj = {
+        "username": "user3",
+        "email": "admin@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        auth = ('user1', 'qwerty')
+        response = self.client.put('user/user3',json=tag_obj,auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,400)
 
+    def test_delete_tag(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        auth = ('user1', 'qwerty')        
+        response = self.client.delete("user/user3", auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,200)
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_delete_tag_bad_username(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        auth = ('user1', 'qwerty')        
+        response = self.client.delete("user/user4", auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,404)
+    
+    def test_delete_tag_bad_user(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        auth = ('user2', 'qwerty')        
+        response = self.client.delete("user/user3", auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,401)
+
+    def test_get_stats(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        auth = ('user3', 'qwerty')        
+        response = self.client.get("user/stat/user3", auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,200)
+
+    def test_get_stats_bad_user(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        auth = ('user2', 'qwerty')        
+        response = self.client.get("user/stat/user3", auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,401)
+
+    def test_get_stats_bad_username(self):
+        delete_user_if_present("user3") 
+        tag_obj = {
+        "username": "user3",
+        "email": "haha@gmail.com",
+        "password": "qwerty",
+        "firstName": "Carl",
+        "lastName": "Jackson"
+        }
+        response = self.client.post('user/',json=tag_obj)
+        auth = ('user3', 'qwerty')        
+        response = self.client.get("user/stat/user4", auth = auth)
+        delete_user_if_present("user3") 
+        self.assertEqual(response.status_code,404)

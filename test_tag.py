@@ -1,146 +1,137 @@
-import unittest
-from unittest import TestCase
-
-from api.errors import *
+from flask_testing import TestCase
+from flask import Flask
+from db import get_db_test
+from api.tag import verify_password
 from models import Tag
-from db import get_db
-from api.tag import tag_get,tag_create,verify_password
-from lab6 import app
-import requests
-from flask_httpauth import HTTPBasicAuth
 def delete_tag_if_present(id):
-    db = get_db()
+    db = get_db_test()
     if db.query(Tag).filter(Tag.idTag == id).first() is not None:
         db.query(Tag).filter(Tag.idTag == id).delete()
         db.commit()
+
+class MyTest(TestCase):
+
+    TESTING = True
+
+    def create_app(self):
+        from api import tag,note,user
+
+        app = Flask(__name__)
+        app.register_blueprint(tag.tag)
+        app.register_blueprint(note.note)
+        app.register_blueprint(user.user)
+        app.config['TESTING'] = True
+        return app
     
-class TestUser(TestCase):
-
-    def setUp(self) -> None:
-        self.tag = Tag(
-            idTag=100,
-            text='text',
-        )
-
     def test_login(self):
-        with app.app_context():
-            a = verify_password('user5','qwerty')
-            self.assertEqual(a,'user5')
+        a = verify_password('user1','qwerty')
+        self.assertEqual(a,'user1')
 
-    def test_login_bad(self):
-        with app.app_context():
-            a = verify_password('user6','notqwerty')
-            self.assertNotEqual(a,'user5')
+    def test_login_bad_password(self):
+        a = verify_password('user1','notqwerty')
+        self.assertNotEqual(a,'user1')
+    
+    def test_login_bad_username(self):
+        a = verify_password('user3','qwerty')
+        self.assertNotEqual(a,'user3')
 
     def test_get_tag_by_id(self):
-        with app.app_context():
-            db = get_db()
-            delete_tag_if_present(100)
-            db.add(Tag(
-                idTag=100,
-                text='text',
-            ))
-            db.commit()
-            a = tag_get(100)
-            db.query(Tag).filter(Tag.idTag == 100).delete()
-            db.commit()
-            #print(a)
-            self.assertEqual(a.status_code,200)
+        response = self.client.get("/tag/1")
+        self.assertEqual(response.status_code,200)
+   
+    def test_get_tag_by_id_no_id(self):
+        response = self.client.get("/tag/3")
+        self.assertEqual(response.status_code,404)
 
     def test_create_tag(self):
-        with app.app_context():
-            db = get_db()
-            delete_tag_if_present(102)
-            
-            url = "http://127.0.0.1:5000/tag"
-            tag_obj = {"idTag":102,"text":"testTag"}
-            x = requests.post(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            db.query(Tag).filter(Tag.idTag == 102).delete()
-            db.commit()
-            self.assertEqual(x.status_code,200)
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":3,"text":"testTag"}
+        auth = ('user1', 'qwerty')
+        response = self.client.post("/tag/",json = tag_obj, auth = auth)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,200)
 
-    def test_create_tag_bad_data(self):
-        with app.app_context():
-            db = get_db()
-            delete_tag_if_present(101)
-            
-            url = "http://127.0.0.1:5000/tag"
-            tag_obj = {"idTag":101,"text":1}
-            x = requests.post(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            db.query(Tag).filter(Tag.idTag == 101).delete()
-            db.commit()
-            self.assertEqual(x.status_code,400)
+    def test_create_tag_bad_body(self):
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":3,"text":12}
+        auth = ('user1', 'qwerty')
+        response = self.client.post("/tag/",json = tag_obj, auth = auth)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,400)
 
     def test_create_tag_bad_id(self):
-        with app.app_context():
-            db = get_db()
-            
-            url = "http://127.0.0.1:5000/tag"
-            tag_obj = {"idTag":1,"text":1}
-            x = requests.post(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            self.assertEqual(x.status_code,400) 
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":1,"text":"test"}
+        auth = ('user1', 'qwerty')
+        response = self.client.post("/tag/",json = tag_obj, auth = auth)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,400)
     
     def test_update_tag(self):
-        with app.app_context():
-            db = get_db()
-            delete_tag_if_present(103)
-            
-            url = "http://127.0.0.1:5000/tag"
-            tag_obj = {"idTag":103,"text":"testTag"}
-            x = requests.post(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            url = "http://127.0.0.1:5000/tag/103"
-            tag_obj = {"text":"testTag2"}
-            x = requests.put(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            db.query(Tag).filter(Tag.idTag == 103).delete()
-            db.commit()
-            self.assertTrue(x.status_code==200)
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":3,"text":"testTag"}
+        tag_obj1 = {"text":"testTag"}
+        auth = ('user1', 'qwerty')
+        self.client.post("/tag/",json = tag_obj, auth = auth)
+        response = self.client.put("/tag/3",json = tag_obj1, auth = auth)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,200)
 
     def test_update_tag_bad_id(self):
-        with app.app_context():
-            db = get_db()
-            delete_tag_if_present(105)
-            
-            url = "http://127.0.0.1:5000/tag"
-            tag_obj = {"idTag":105,"text":"testTag"}
-            x = requests.post(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            url = "http://127.0.0.1:5000/tag/123213"
-            tag_obj = {"text":"testTag2"}
-            x = requests.put(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            self.assertTrue(x.status_code == 404)
-        
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":3,"text":"testTag"}
+        tag_obj1 = {"text":"testTag"}
+        auth = ('user1', 'qwerty')
+        self.client.post("/tag/",json = tag_obj, auth = auth)
+        response = self.client.put("/tag/4",json = tag_obj1, auth = auth)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,404)
+
+    def test_update_tag_not_admin(self):
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":3,"text":"testTag"}
+        tag_obj1 = {"text":"testTag"}
+        auth = ('user1', 'qwerty')
+        auth2 = ('user2', 'qwerty')
+        self.client.post("/tag/",json = tag_obj, auth = auth)
+        response = self.client.put("/tag/3",json = tag_obj1, auth = auth2)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,401)
+
+    def test_update_tag_bad_body(self):
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":3,"text":"testTag"}
+        tag_obj1 = {"text":1}
+        auth = ('user1', 'qwerty')
+        self.client.post("/tag/",json = tag_obj, auth = auth)
+        response = self.client.put("/tag/3",json = tag_obj1, auth = auth)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,400)
+    
     def test_delete_tag(self):
-        with app.app_context():
-            db = get_db()
-            delete_tag_if_present(104)
-            
-            url = "http://127.0.0.1:5000/tag"
-            tag_obj = {"idTag":104,"text":"testTag"}
-            x = requests.post(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            url = "http://127.0.0.1:5000/tag/104"
-            tag_obj = {"text":"testTag2"}
-            x = requests.delete(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
-            
-            self.assertTrue(db.query(Tag).filter(Tag.idTag == 104).first() == None)
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":3,"text":"testTag"}
+        auth = ('user1', 'qwerty')
+        self.client.post("/tag/",json = tag_obj, auth = auth)
+        response = self.client.delete("/tag/3", auth = auth)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,200)
 
     def test_delete_tag_bad_id(self):
-        with app.app_context():
-            db = get_db()
-            delete_tag_if_present(106)
-            
-            url = "http://127.0.0.1:5000/tag"
-            tag_obj = {"idTag":106,"text":"testTag"}
-            x = requests.post(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            url = "http://127.0.0.1:5000/tag/10444"
-            tag_obj = {"text":"testTag2"}
-            x = requests.delete(url=url,json=tag_obj,auth = ('user5', 'qwerty'))
-            #print('----\n',x.text,'\n----\n')
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":3,"text":"testTag"}
+        auth = ('user1', 'qwerty')
+        self.client.post("/tag/",json = tag_obj, auth = auth)
+        response = self.client.delete("/tag/4", auth = auth)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,404)
 
-            db.query(Tag).filter(Tag.idTag == 104).delete()
-            db.commit()
-            self.assertTrue(x.status_code == 404)
+    def test_delete_tag_not_admin(self):
+        delete_tag_if_present(3)
+        tag_obj = {"idTag":3,"text":"testTag"}
+        auth = ('user1', 'qwerty')
+        auth2 = ('user2', 'qwerty')
+        self.client.post("/tag/",json = tag_obj, auth = auth)
+        response = self.client.delete("/tag/3", auth = auth2)
+        delete_tag_if_present(3)
+        self.assertEqual(response.status_code,401)

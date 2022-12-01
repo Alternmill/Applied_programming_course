@@ -17,8 +17,8 @@ def verify_password(username, password):
     user_r = db.query(User).filter(User.username == username).first()
     if user_r is None:
         return False
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'),salt = bcrypt.gensalt())
-    if (user_r is None) or (bcrypt.checkpw(user_r.password.encode('utf-8') , hashed_password)):
+   
+    if bcrypt.checkpw(password.encode('utf-8'),user_r.password.encode('utf-8')) == False:
         return False 
     return username
 
@@ -27,7 +27,6 @@ def verify_password(username, password):
 @auth.login_required
 def tag_create():
     db = get_db()
-
     try:
         new_tag = TagSchema().load(request.json)
     except ValidationError:
@@ -97,7 +96,7 @@ def tag_delete(id):
     ctags = db.query(Tags).filter(Tags.idTag == id).all()
 
     for ctag in ctags:
-        db.query(Tags).filter(Tags.idTag == ctag.idTag).delete()
+        db.query(Tags).filter(Tags.idTag == ctag.idTag).delete() # pragma: no cover
 
     db.query(Tag).filter(Tag.idTag == id).delete()
 
