@@ -13,7 +13,7 @@ Session = sessionmaker(bind=engine, autoflush=False)
 db_test = Session()
 
 def get_db():
-    return db
+    return db_test
 
 def get_db_test():
     return db_test

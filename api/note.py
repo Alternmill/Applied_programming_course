@@ -8,7 +8,8 @@ import bcrypt
 from models import *
 from api.errors import StatusResponse
 from flask_httpauth import HTTPBasicAuth
-
+from random import randrange
+from flask_cors import CORS, cross_origin
 note = Blueprint('note', __name__, url_prefix='/note')
 
 auth = HTTPBasicAuth()
@@ -25,6 +26,7 @@ def verify_password(username, password):
     return username
 
 @note.route('/', methods=['POST'])
+@cross_origin(supports_credentials=True)
 @auth.login_required
 def note_create():
     db = get_db()
@@ -39,12 +41,12 @@ def note_create():
     if user is None:
         return StatusResponse(response= 'Error : Did not find a user with such id', code = 404) 
 
-
-    note = db.query(Note).filter(Note.idNote == new_note['id']).first()
+    id = randrange(0,1000000000)
+    note = db.query(Note).filter(Note.idNote == id).first()
     if note is not None:
         return StatusResponse(response= 'Error : Invalid input for NoteCreate, id already exists', code = 400) 
-
-    note = Note(idNote = new_note['id'],ownerId = new_note['ownerId'],title = new_note['title'],
+    print(new_note)
+    note = Note(idNote = id,ownerId = new_note['ownerId'],title = new_note['title'],
         isPublic = new_note['isPublic'], text = new_note['text'],dateOfEditing = func.now() 
     )
 
@@ -57,7 +59,7 @@ def note_create():
         tag_note = Tags(idNote = note.idNote,idTag=tag)
         db.add(tag_note)
 
-    editnote = EditNote(idUser = new_note['ownerId'],idNote = new_note['id'])
+    editnote = EditNote(idUser = new_note['ownerId'],idNote = id)
     
     db.add(note)
     db.commit()
@@ -102,6 +104,48 @@ def note_get(id):
     note_info['tags']=tgs
 
     return StatusResponse(response= note_info, code = 200) 
+
+@note.route('/all', methods=['GET'])
+@auth.login_required
+def notes_get():
+    db = get_db()
+    
+    owner = db.query(User).filter(User.username == auth.username()).first()
+
+    print(owner.idUser)
+    notes = db.query(Note).filter(Note.ownerId == owner.idUser)
+    rnotes = []
+    for note in notes:
+        print(note)
+        if note is None:
+            return StatusResponse(response= 'Error, no such note id', code = 404) 
+        
+        owner = db.query(User).filter(User.idUser == note.ownerId).first()
+
+        if auth.username() != owner.username:
+            check_admin = db.query(Admin).filter(Admin.username == auth.username()).first()
+            if check_admin is None:
+                return StatusResponse(response= 'Must be an admin', code = 401) 
+        note_info = NoteGetSchemaWithAuthors().dump(note)
+
+        authors = db.query(EditNote).filter(EditNote.idNote == id).all()
+        au = []
+
+        for aut in authors:
+            au.append(UserGetSchema().dump(db.query(User).filter(User.idUser == aut.idUser).first()))
+        
+        note_info['authors']=au
+
+        tgs = []
+        tags = db.query(Tags).filter(Tags.idNote == id).all()
+
+        for tag in tags:
+            tgs.append(TagSchema().dump(db.query(Tag).filter(Tag.idTag == tag.idTag).first()))
+
+        note_info['tags']=tgs
+        rnotes.append(note_info)
+
+    return StatusResponse(response= rnotes, code = 200) 
 
 
 @note.route('/<int:id>', methods=['PUT'])

@@ -15,6 +15,10 @@ class AllowSchema(Schema):
 class TagUpdateSchema(Schema):
     text = fields.String(required=True)
 
+class CheckCredentials(Schema):
+    username = fields.String(required=True)
+    password = fields.String(required=True)
+    
 class UserCreatingSchema(Schema):
     username = fields.String(required=True)
     email = fields.String(required=True)
@@ -33,7 +37,6 @@ class UserGetSchema(Schema):
 
 
 class NoteGetSchema(Schema):
-    idNote = fields.Integer()
     ownerId = fields.Integer()
     title = fields.String()
     isPublic = fields.Boolean()

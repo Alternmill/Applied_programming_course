@@ -14,6 +14,11 @@ auth = HTTPBasicAuth()
 
 @auth.verify_password
 def verify_password(username, password):
+    print("ouifhndgsuopgfhsdi")
+    if username == '':
+        print("ognfdgpids")
+
+    print(username,password)
     db = get_db()
     user_r = db.query(User).filter(User.username == username).first()
     if user_r is None:
@@ -21,8 +26,14 @@ def verify_password(username, password):
    
     if bcrypt.checkpw(password.encode('utf-8'),user_r.password.encode('utf-8')) == False:
         return False 
+    print("Success")
     return username
 
+
+@user.route('/check', methods=['GET'])
+@auth.login_required
+def check_user():
+    return StatusResponse(code=200, response='Login successful')
 
 @user.route('/', methods=['POST'])
 def add_user():
@@ -43,6 +54,7 @@ def add_user():
     if existsEmail:
         return StatusResponse(code=400, response='The email is used by other user')
 
+    print(user['password'])
     hashed_password = bcrypt.hashpw(user['password'].encode('utf-8'),salt = bcrypt.gensalt()).decode('utf-8')
 
     new_user = User(firstName=user['firstName'], lastName=user['lastName'], username=user['username'],
@@ -83,8 +95,8 @@ def get_user(username):
         user_notes.append(add_note)
 
     user['notes']=user_notes
-
-    return jsonify(user)
+    print(user)
+    return StatusResponse(code=200, response=user)
 
 @user.route('/<username>', methods=['PUT'])
 @auth.login_required

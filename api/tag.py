@@ -48,6 +48,7 @@ def tag_create():
 
 @tag.route('/<int:id>', methods=['GET'])
 def tag_get(id):
+    db = get_db()
     tag = db.query(Tag).filter(Tag.idTag == id).first()
 
     if tag is None:
